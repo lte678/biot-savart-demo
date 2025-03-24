@@ -26,12 +26,16 @@ def get_polygon_normal(polygon):
     if polygon.shape[0] < 3:
         raise ValueError
     
-    r0 = polygon[0]
-    norm = np.cross(polygon[1] - r0, polygon[2] - r0)
+    # Find oriented normal using Newell's method
+    # https://stackoverflow.com/questions/22838071/robust-polygon-normal-calculation
+    norm = np.zeros(3)
+    for r0, r1 in pairwise(polygon):
+        norm += np.cross(r0, r1)
+
+    # Check planarity for N_vertices > 3
     if polygon.shape[0] > 3:
-        # A triangle is always coplanar
-        for poly_vertex in polygon[3:]:
-            if not isclose(np.dot(norm, poly_vertex - r0), 0.0):
+        for poly_vertex in polygon[1:]:
+            if not isclose(np.dot(norm, poly_vertex - polygon[0]), 0.0):
                 raise ValueError('Polygon is not planar')
     return norm / np.linalg.norm(norm)
 
@@ -45,7 +49,8 @@ def edge_contribution(e, r_0, r_1, x, y, ell):
         beta = asin(H)
     else:
         beta = pi - asin(H)
-    
+
+    # print(f'Beta={beta:.1f}, F={F:.1f}')
     return E - beta * e / sqrt(y**2 - e**2)
 
 
@@ -100,12 +105,12 @@ vertices = np.array([
 ])
 
 CURRENT_DENSITY = np.array([0.0, 0.0, 2.0])
-face1 = np.array([vertices[0], vertices[1], vertices[2], vertices[3], vertices[0]])
+face1 = np.array([vertices[0], vertices[1], vertices[2], vertices[3], vertices[0]][::-1])
 face2 = np.array([vertices[4], vertices[5], vertices[6], vertices[7], vertices[4]])
 face3 = np.array([vertices[0], vertices[1], vertices[5], vertices[4], vertices[0]])
 face4 = np.array([vertices[2], vertices[3], vertices[7], vertices[6], vertices[2]])
 face5 = np.array([vertices[1], vertices[2], vertices[6], vertices[5], vertices[1]])
-face6 = np.array([vertices[0], vertices[3], vertices[7], vertices[4], vertices[0]])
+face6 = np.array([vertices[0], vertices[3], vertices[7], vertices[4], vertices[0]][::-1])
 box = [face1, face2, face3, face4, face5, face6]
 
 #fig = plt.figure()
@@ -113,13 +118,16 @@ box = [face1, face2, face3, face4, face5, face6]
 #ax.add_collection3d(Poly3DCollection(box, alpha=0.2))
 #plt.show()
 
+for face in box:
+    assert np.dot(face[0], get_polygon_normal(face)) > 0.0
+
 r = np.array([-5.0, 0.0, 5.0])
 print(field_for_volume(box, r, CURRENT_DENSITY))
 
 
 ## Plotting
-X = np.linspace(-2.5, 2.5, 50)
-Y = np.linspace(-2.5, 2.5, 50)
+X = np.linspace(-3.5, 3.5, 50)
+Y = np.linspace(-3.5, 3.5, 50)
 x_grid, y_grid = np.meshgrid(X, Y)
 
 np_field = np.vectorize(lambda x_p, y_p: field_for_volume(box, np.array([x_p, y_p, 0.0]), CURRENT_DENSITY), signature='(),()->(n)')
