@@ -82,7 +82,7 @@ def L(polygon, r, omega):
         K_1 = edge_contribution(e, np.linalg.norm(r_0), np.linalg.norm(r_1), x, y, ell)
         b_i = np.dot(np.cross(n, r), s_i)
         K_1_sum += b_i * K_1
-    return gamma * K_1
+    return gamma * K_1_sum
     
     
 def field_for_volume(polygons, r, omega):
