@@ -58,11 +58,9 @@ def L(polygon, r, omega):
     n = get_polygon_normal(polygon)
     assert isclose(np.linalg.norm(n), 1.0)
     e_n = n
-    if np.dot(e_n, r) < 0.0:
+    if np.dot(e_n, r - polygon[0]) < 0.0:
         e_n = -e_n
     
-    gamma = -np.cross(n, omega)
-
     K_1_sum = 0.0
     for vertex_0, vertex_1 in pairwise(polygon):
         ell = np.linalg.norm(vertex_1 - vertex_0)
@@ -80,8 +78,10 @@ def L(polygon, r, omega):
         # It is just a coordinate transformation it should still have the same length
         assert isclose(sqrt(x**2 + y**2), np.linalg.norm(r_0))
         K_1 = edge_contribution(e, np.linalg.norm(r_0), np.linalg.norm(r_1), x, y, ell)
-        b_i = np.dot(np.cross(n, r), s_i)
+        b_i = np.dot(np.cross(n, r_0), s_i)
         K_1_sum += b_i * K_1
+    
+    gamma = -np.cross(n, omega)
     return gamma * K_1_sum
     
     
@@ -104,28 +104,27 @@ vertices = np.array([
     [-1.0,  1.0, 1.0],
 ])
 
+
+## Prepare geometry.
 CURRENT_DENSITY = np.array([0.0, 0.0, 2.0])
-face1 = np.array([vertices[0], vertices[1], vertices[2], vertices[3], vertices[0]][::-1])
+face1 = np.array([vertices[3], vertices[2], vertices[1], vertices[0], vertices[3]])
 face2 = np.array([vertices[4], vertices[5], vertices[6], vertices[7], vertices[4]])
 face3 = np.array([vertices[0], vertices[1], vertices[5], vertices[4], vertices[0]])
 face4 = np.array([vertices[2], vertices[3], vertices[7], vertices[6], vertices[2]])
 face5 = np.array([vertices[1], vertices[2], vertices[6], vertices[5], vertices[1]])
-face6 = np.array([vertices[0], vertices[3], vertices[7], vertices[4], vertices[0]][::-1])
-box = [face1, face2, face3, face4, face5, face6]
-
-#fig = plt.figure()
-#ax = fig.add_subplot(projection='3d')
-#ax.add_collection3d(Poly3DCollection(box, alpha=0.2))
-#plt.show()
-
+face6 = np.array([vertices[4], vertices[7], vertices[3], vertices[0], vertices[4]])
+box = [face6]
 for face in box:
     assert np.dot(face[0], get_polygon_normal(face)) > 0.0
+    face += [1.0, 0.0, 0.0]
 
+
+## Test a single point
 r = np.array([-5.0, 0.0, 5.0])
 print(field_for_volume(box, r, CURRENT_DENSITY))
 
 
-## Plotting
+## Plot field in a 2D plane
 X = np.linspace(-3.5, 3.5, 50)
 Y = np.linspace(-3.5, 3.5, 50)
 x_grid, y_grid = np.meshgrid(X, Y)
